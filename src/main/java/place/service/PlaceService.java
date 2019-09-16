@@ -1,5 +1,6 @@
 package place.service;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -10,11 +11,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.prevayler.Prevayler;
+import org.prevayler.PrevaylerFactory;
 import org.prevayler.Transaction;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import place.config.PrevaylerContext;
 import place.model.Data;
 import place.model.Place;
 import place.vo.PlaceVO;
@@ -24,8 +25,20 @@ public class PlaceService implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	@Autowired
-	private PrevaylerContext prevaylerContext;
+	private static Prevayler prevayler;
+
+	public PlaceService() {
+		if (prevayler == null) {
+			PrevaylerFactory factory = new PrevaylerFactory();
+			factory.configurePrevalenceBase("data");
+			factory.configurePrevalentSystem(new Data());
+			try {
+				prevayler = factory.create();
+			} catch (ClassNotFoundException | IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
 	public Collection<Place> findByName(final String name) {
 		return name != null ? getPlaces(place -> place.getName() != null
@@ -40,7 +53,7 @@ public class PlaceService implements Serializable {
 
 	public void create(PlaceVO placeVO) {
 
-		prevaylerContext.execute(new Transaction() {
+		prevayler.execute(new Transaction() {
 
 			private static final long serialVersionUID = 1L;
 
@@ -62,7 +75,7 @@ public class PlaceService implements Serializable {
 
 	public void edit(String uuid, PlaceVO placeVO) {
 
-		prevaylerContext.execute(new Transaction() {
+		prevayler.execute(new Transaction() {
 
 			private static final long serialVersionUID = 1L;
 
@@ -88,7 +101,7 @@ public class PlaceService implements Serializable {
 	}
 
 	private Stream<Place> getPlaces(Predicate<Place> predicate) {
-		return prevaylerContext.getData().getPlaces().stream().filter(predicate);
+		return ((Data) prevayler.prevalentSystem()).getPlaces().stream().filter(predicate);
 	}
 
 }
